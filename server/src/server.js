@@ -49,13 +49,31 @@ io.on('connection', (socket) => {
     let newRoom = false;
 
     socket.on('join-room', async (meetingId, user) => {
-        client = await Client.findOne({ name: user });
-        let requestedRoom = await Room.findOne({ name: meetingId });
+        let roomName = meetingId;
+        client = clients.find(client => client.username === user && client.socket.id === socket.id);
+        if (!client) {
+            client = new Client(user, socket);
+            clients.push(client);
+        }
+
+        let requestedRoom = rooms.find(room => room.roomName === roomName);
         if (!requestedRoom) {
             newRoom = true;
             const workerToUse = await getWorker(workers);
-            requestedRoom = new Room({ name: meetingId, worker: workerToUse });
+            requestedRoom = new Room(roomName, workerToUse);
+            await requestedRoom.createRouter();
+            rooms.push(requestedRoom);
         }
+
+        client.room = requestedRoom;
+        client.room.addClient(client);
+        socket.join(client.room.roomName);
+
+        // PLACEHOLDER .. -> Eventually we will need to get all current producers and sent it to our client to consume.... come back to this !
+        ackCb({
+            routerRtpCapabilities: client.room.router.rtpCapabilities,
+            newRoom
+        })
     })
 
 
