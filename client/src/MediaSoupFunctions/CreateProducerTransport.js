@@ -1,0 +1,33 @@
+const createProducerTransport = (socket, device) => new Promise(async (resolve, reject) => {
+    const producerTransportParams = await socket.emitWithAck('requestTransport', {
+        type: "producer"
+    })
+
+    console.log("test", socket, device);
+
+    const producerTransport = device.createSendTransport(producerTransportParams);
+
+    producerTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
+        console.log("connect running on Produce...");
+        const connectResp = await socket.emitWithAck('connectTransport', { dtlsParameters, type: "producer" });
+        console.log(connectResp, "connectResp is back");
+        if (connectResp == "success") {
+            callback();
+        } else if (connectResp === "error") {
+            errback();
+        }
+    })
+    producerTransport.on('produce', async (parameters, callback, errback) => {
+        console.log("Produce is now running");
+        const { kind, rtpParameters } = parameters;
+        const produceResp = await socket.emitWithAck('startProducing', { kind, rtpParameters });
+        console.log(produceResp, "produceResp is back!");
+        if (produceResp === "error") errback();
+        else {
+            callback({ id: produceResp });
+        }
+    })
+    resolve(producerTransport);
+
+})
+export default createProducerTransport;

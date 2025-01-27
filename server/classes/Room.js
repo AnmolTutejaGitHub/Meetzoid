@@ -5,6 +5,7 @@ class Room {
         this.worker = workerToUse;
         this.router = null;
         this.clients = [];
+        this.roomProducers = {}; // list of all producers(audio and video) // {socketid:{audioPid,videopid}, ...}
     }
     addClient(client) {
         this.clients.push(client);

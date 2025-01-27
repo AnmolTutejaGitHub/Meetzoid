@@ -1,4 +1,5 @@
 function getWorker(workers) {
+    //console.log(workers);
     return new Promise(async (resolve, reject) => {
         const workersLoad = workers.map(worker => {
             return new Promise(async (resolve, reject) => {

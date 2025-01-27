@@ -25,5 +25,18 @@ const config = {
             parameters: {}
         }
     ],
+    webRtcTransport: {
+        listenIps: [
+            {
+                protocol: 'udp',
+                ip: '127.0.0.1'
+            }, {
+                protocol: 'tcp',
+                ip: '127.0.0.1'
+            }
+        ],
+        maxIncomingBitrate: 5000000,
+        initialAvailableOutgoingBitrate: 5000000
+    }
 }
 module.exports = config;
