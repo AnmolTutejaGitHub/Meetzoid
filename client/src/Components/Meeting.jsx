@@ -53,9 +53,16 @@ function Meeting() {
                 })
                 console.log("consumeRes", resp);
 
-                const consumerTrasport = device.current.createRecvTransport(resp);
-                consumerTrasport.on('connect', async ({ dtlsParameters }, callback, errback) => {
+                const consumerTransport = device.current.createRecvTransport(resp);
+                consumerTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
                     console.log("Transport connect event has fired!");
+                    const transportState = consumerTransport.state;
+                    if (transportState === 'connected') {
+                        console.log('Transport already connected');
+                        callback();
+                        return;
+                    }
+
                     const connectResp = await socket.emitWithAck('connectTransport', { dtlsParameters, type: "consumer", audioId: producerId });
                     console.log(connectResp, "connectResp is back");
 
@@ -72,8 +79,8 @@ function Meeting() {
                 console.log("videoId", videoId);
 
                 const [audioConsumer, videoConsumer] = await Promise.all([
-                    createConsumer(consumerTrasport, producerId, device.current, socket, 'audio'),
-                    createConsumer(consumerTrasport, videoId, device.current, socket, 'video')
+                    createConsumer(consumerTransport, producerId, device.current, socket, 'audio'),
+                    createConsumer(consumerTransport, videoId, device.current, socket, 'video')
                 ])
                 console.log(audioConsumer);
                 console.log(videoConsumer);

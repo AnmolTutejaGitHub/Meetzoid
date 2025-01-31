@@ -90,44 +90,48 @@ io.on('connection', (socket) => {
 
 
     socket.on('requestTransport', async ({ audioId, type }, ackCb) => {
-        let clientTransportParams;
-        if (type === "producer") {
-            clientTransportParams = await client.addTransport(type);
-        }
-        else if (type == "consumer") {
-            // consumer transport
-            const producingClient = client.room.clients.find(c => c?.producer?.audio?.id === audioId);
+        try {
+            let clientTransportParams;
+            if (type === "producer") {
+                clientTransportParams = await client.addTransport(type);
+            }
+            else if (type == "consumer") {
+                // consumer transport
+                const producingClient = client.room.clients.find(c => c?.producer?.audio?.id === audioId);
 
-            const videoId = producingClient?.producer?.video?.id;
-            clientTransportParams = await client.addTransport(type, audioId, videoId);
+                const videoId = producingClient?.producer?.video?.id;
+                clientTransportParams = await client.addTransport(type, audioId, videoId);
+            }
+            ackCb(clientTransportParams);
+        } catch (err) {
+            console.log(err);
         }
-        ackCb(clientTransportParams);
     })
 
 
     socket.on('connectTransport', async ({ dtlsParameters, type, audioId }, ackCb) => {
-        if (type === "producer") {
-            try {
-                await client.upstreamTransport.connect({ dtlsParameters });
-                ackCb("success");
-            } catch (err) {
-                console.log(err);
-                ackCb("error");
+        try {
+            if (type === "producer") {
+                if (!client.upstreamTransport.connected) {
+                    await client.upstreamTransport.connect({ dtlsParameters });
+                    ackCb("success");
+                } else {
+                    ackCb("alreadyConnected");
+                }
             }
-        }
-        else if (type === "consumer") {
-            try {
-                const downstreamTransport = client.downstreamTransports.find(t => {
-                    return t.associatedAudioPid === audioId
-                })
+            else if (type === "consumer") {
+                const downstreamTransport = client.downstreamTransports.find(t => t.associatedAudioPid === audioId);
 
-                downstreamTransport.transport.connect({ dtlsParameters });
-
-                ackCb("success");
-            } catch (err) {
-                console.log(err);
-                ackCb("error");
+                if (downstreamTransport && !downstreamTransport.transport.connected) {
+                    await downstreamTransport.transport.connect({ dtlsParameters });
+                    ackCb("success");
+                } else {
+                    ackCb("alreadyConnected");
+                }
             }
+        } catch (err) {
+            console.log(err);
+            ackCb("error");
         }
     })
 
@@ -199,16 +203,21 @@ io.on('connection', (socket) => {
 
     socket.on('find-corresponding-videopid', async ({ audioId }, cbAck) => {
         const producingClient = client.room.clients.find(c => c?.producer?.audio?.id === audioId);
+        console.log("audio", client?.producer?.audio);
+        console.log("id", client?.producer?.audio.id);
+        console.log(producingClient);
 
         const videoId = producingClient?.producer?.video?.id;
+        console.log("videoProd", producingClient?.producer?.video);
+        console.log("found", videoId);
         cbAck(videoId);
     })
 
     socket.on('unpauseConsumer', async ({ pid, kind }, ackCb) => {
-        const consumerToResume = client.downstreamTransports.find(t => {
-            return t?.[kind].producerId === pid
-        })
-        await consumerToResume[kind].resume();
+        // const consumerToResume = client.downstreamTransports.find(t => {
+        //     return t?.[kind]?.id === pid
+        // })
+        // await consumerToResume[kind].resume();
         ackCb();
     })
 
